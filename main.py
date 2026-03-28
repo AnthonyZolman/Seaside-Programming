@@ -40,7 +40,6 @@ current_color = color_passive
 # --- Background images ---
 bg_one = pygame.image.load('assets/lvl_one_bg.png').convert_alpha()
 
-
 def call_gemini(pil_img, query):
     global ai_response, is_loading
     try:
@@ -50,7 +49,8 @@ def call_gemini(pil_img, query):
             model="gemini-2.5-flash",
             contents=[
                 types.Part.from_bytes(data=img_byte_arr.getvalue(), mime_type="image/png"),
-                f"Context: The user is looking at the 3D render on the left. Question: {query}"
+                f"Context: The user is looking at the 3D render on the left. Answer whatever question"
+                f" they may have even if the image does not match what is being asked Question: {query}"
             ]
         )
         ai_response = response.text
@@ -69,8 +69,7 @@ while running:
     pygame.draw.rect(screen, SIDEBAR_BG, (SIDEBAR_X, 0, SIDEBAR_WIDTH, HEIGHT))  # Sidebar Area
     pygame.draw.line(screen, (200, 200, 200), (SIDEBAR_X, 0), (SIDEBAR_X, HEIGHT), 2)  # Divider
 
-    # Placeholder for your 3D Content (Drawing on the left)
-    #pygame.draw.circle(screen, (0, 0, 255), (SIDEBAR_X // 2, HEIGHT // 2), 100)
+    screen.blit(bg_one, (0, 0))
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -129,8 +128,8 @@ while running:
     # Render typing text (clipped to box width)
     txt_to_show = f"> {user_query}" + ("|" if active else "")
     input_surface = font.render(txt_to_show, True, BLACK)
-    screen.blit(input_surface, (input_rect.x + 5, input_rect.y + 10))
 
+    screen.blit(input_surface, (input_rect.x + 5, input_rect.y + 10))
     pygame.display.flip()
     clock.tick(60)
 
