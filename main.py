@@ -10,7 +10,6 @@ from dotenv import load_dotenv
 
 # --- Setup ---
 load_dotenv("keys.env")
-# Make sure your API_KEY is set in keys.env
 client = genai.Client(api_key=os.environ.get("API_KEY"))
 
 pygame.init()
