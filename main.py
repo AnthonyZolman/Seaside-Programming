@@ -7,33 +7,38 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 
-# Load Gemini API key from .env file
+# --- Setup ---
 load_dotenv("keys.env")
 client = genai.Client(api_key=os.environ.get("API_KEY"))
 
 pygame.init()
-
 WIDTH, HEIGHT = 1280, 720
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Seaside Programming")
+pygame.display.set_caption("Seaside Programming - 3D Sidebar")
 
+# --- UI Constants ---
+SIDEBAR_WIDTH = 400
+SIDEBAR_X = WIDTH - SIDEBAR_WIDTH  # Starts at x=880
 WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-BLUE = (0, 0, 255)
+SIDEBAR_BG = (245, 245, 245)
+BLACK = (20, 20, 20)
 clock = pygame.time.Clock()
-font = pygame.font.SysFont("Consolas", 20)
+font = pygame.font.SysFont("Consolas", 18)
 
-# User variables
+# --- State Variables ---
 user_query = ""
-ai_response = "Click the box below, type your question, and hit ENTER..."
+ai_response = "Click below to ask about the 3D scene..."
 is_loading = False
 active = False
 
-# Input box setup
-input_rect = pygame.Rect(20, 600, 1240, 40)  # Made it wider for your 1280 screen
+# Input Box constrained to Sidebar width
+input_rect = pygame.Rect(SIDEBAR_X + 20, HEIGHT - 60, SIDEBAR_WIDTH - 40, 40)
 color_active = (0, 150, 0)
 color_passive = (150, 150, 150)
 current_color = color_passive
+
+# --- Background images ---
+bg_one = pygame.image.load('assets/lvl_one_bg.png').convert_alpha()
 
 
 def call_gemini(pil_img, query):
@@ -41,12 +46,11 @@ def call_gemini(pil_img, query):
     try:
         img_byte_arr = BytesIO()
         pil_img.save(img_byte_arr, format='PNG')
-
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=[
                 types.Part.from_bytes(data=img_byte_arr.getvalue(), mime_type="image/png"),
-                f"Context: This is the users current screen. Here is their question: {query}"
+                f"Context: The user is looking at the 3D render on the left. Question: {query}"
             ]
         )
         ai_response = response.text
@@ -60,17 +64,19 @@ running = True
 pygame.key.start_text_input()
 
 while running:
-    screen.fill(WHITE)
+    # 1. Backgrounds
+    screen.fill(WHITE)  # Main 3D Area
+    pygame.draw.rect(screen, SIDEBAR_BG, (SIDEBAR_X, 0, SIDEBAR_WIDTH, HEIGHT))  # Sidebar Area
+    pygame.draw.line(screen, (200, 200, 200), (SIDEBAR_X, 0), (SIDEBAR_X, HEIGHT), 2)  # Divider
 
-    # Example Object (something for Gemini to see)
-    pygame.draw.rect(screen, BLUE, (540, 200, 200, 200))
+    # Placeholder for your 3D Content (Drawing on the left)
+    #pygame.draw.circle(screen, (0, 0, 255), (SIDEBAR_X // 2, HEIGHT // 2), 100)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
         if event.type == pygame.MOUSEBUTTONDOWN:
-            # Check if user clicked on the input box
             if input_rect.collidepoint(event.pos):
                 active = True
                 current_color = color_active
@@ -78,60 +84,52 @@ while running:
                 active = False
                 current_color = color_passive
 
-        # Only process typing if the box is ACTIVE
         if active and not is_loading:
             if event.type == pygame.TEXTINPUT:
                 user_query += event.text
-
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_BACKSPACE:
                     user_query = user_query[:-1]
                 elif event.key == pygame.K_RETURN and user_query.strip() != "":
                     is_loading = True
-                    # Capture the screen BEFORE clearing user_query or deactivating
+                    # Capture the WHOLE screen so Gemini sees the 3D view
                     raw_str = pygame.image.tobytes(screen, "RGB")
                     pil_img = Image.frombytes("RGB", screen.get_size(), raw_str)
-
                     threading.Thread(target=call_gemini, args=(pil_img, user_query)).start()
                     user_query = ""
                     active = False
-                    current_color = color_passive
 
-    # --- DRAWING THE UI ---
+    # --- RENDER SIDEBAR CONTENT ---
 
-    # 1. Draw the Input Box
-    pygame.draw.rect(screen, (240, 240, 240), input_rect)  # Light gray background for box
-    pygame.draw.rect(screen, current_color, input_rect, 2)  # Colored border
-
-    # Render the typing text
-    input_text = f"Query: {user_query}" + ("|" if active else "")
-    input_surface = font.render(input_text, True, BLACK)
-    screen.blit(input_surface, (input_rect.x + 10, input_rect.y + 10))
-
-    # 2. Draw the AI Response with fixed wrapping
-    if is_loading:
-        status_color = (150, 150, 0)  # Darker yellow for visibility on white
-        display_text = "Gemini is analyzing the screen..."
-    else:
-        status_color = (50, 50, 50)  # Dark gray text
-        display_text = ai_response
-
+    # 1. Wrap AI Response to fit Sidebar
+    display_text = "Gemini is thinking..." if is_loading else ai_response
     words = display_text.split()
     lines = []
     current_line = ""
+    # Approx 40 characters fit in 360 pixels with 18pt Consolas
+    MAX_CHARS_PER_LINE = 38
+
     for word in words:
-        # Check if adding the next word exceeds line length (approx 100 chars for 1280 width)
-        if len(current_line + word) < 100:
+        if len(current_line + word) < MAX_CHARS_PER_LINE:
             current_line += word + " "
         else:
             lines.append(current_line)
             current_line = word + " "
     lines.append(current_line)
 
-    # Render up to 20 lines of response
-    for i, line in enumerate(lines[:20]):
-        res_surf = font.render(line, True, status_color)
-        screen.blit(res_surf, (20, 20 + (i * 25)))
+    # Draw lines inside sidebar
+    for i, line in enumerate(lines[:25]):  # Show up to 25 lines
+        res_surf = font.render(line, True, BLACK)
+        screen.blit(res_surf, (SIDEBAR_X + 20, 20 + (i * 22)))
+
+    # 2. Draw Input Box at bottom of Sidebar
+    pygame.draw.rect(screen, (255, 255, 255), input_rect)
+    pygame.draw.rect(screen, current_color, input_rect, 2)
+
+    # Render typing text (clipped to box width)
+    txt_to_show = f"> {user_query}" + ("|" if active else "")
+    input_surface = font.render(txt_to_show, True, BLACK)
+    screen.blit(input_surface, (input_rect.x + 5, input_rect.y + 10))
 
     pygame.display.flip()
     clock.tick(60)
