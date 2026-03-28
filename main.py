@@ -1,16 +1,40 @@
-# This is a sample Python script.
+import os
+import pygame
+import sys
+from google import genai
+from dotenv import load_dotenv
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+pygame.init()
 
+WIDTH, HEIGHT = 1280, 720
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Seaside Programming")
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+WHITE = (255, 255, 255)
+BLUE = (0, 0, 255)
+clock = pygame.time.Clock()
 
+#Load Gemini API key from .env file
+load_dotenv("keys.env")
+API_KEY = os.environ.get("API_KEY")
+client = genai.Client(api_key=API_KEY)
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+response = client.models.generate_content(
+    model="gemini-2.5-flash",
+    contents="Explain how the James Webb Space Telescope works to a 5-year-old."
+)
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+print(response.text)
+
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+    screen.fill(WHITE)
+    pygame.draw.rect(screen, BLUE, [350, 250, 100, 100])
+    pygame.display.flip()
+    clock.tick(60)
+pygame.quit()
+sys.exit()
+
