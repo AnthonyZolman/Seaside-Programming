@@ -8,41 +8,50 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 
-# Gemini API Setup
+# --- Gemini API Setup ---
 load_dotenv("keys.env")
 client = genai.Client(api_key=os.environ.get("API_KEY"))
 
-# Initialize Pygame
+# 1. Initialize Pygame
 pygame.init()
 
-# Constants & Setup
+# 2. Constants & Setup
 WIDTH, HEIGHT = 1280, 720
 SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Seaside Programming - IDE Layout")
 
 # Colors
-BG_MAIN = (230, 235, 240)  # A slightly darker grey-blue for the app background
-BG_PANEL = (255, 255, 255)  # White for panels
+BG_MAIN = (230, 235, 240)
+BG_PANEL = (255, 255, 255)
 TEXT_COLOR = (40, 40, 40)
 ACCENT_COLOR = (255, 165, 0)
 USER_BUBBLE = (220, 240, 255)
 AI_BUBBLE = (245, 245, 245)
+
+# Button Colors
 BTN_GREEN = (46, 204, 113)
 BTN_GREEN_HOVER = (39, 174, 96)
 BTN_RED = (231, 76, 60)
 BTN_RED_HOVER = (192, 57, 43)
+BTN_BLUE = (52, 152, 219)
+BTN_BLUE_HOVER = (41, 128, 185)
+# NEW: Gray color for the HIDE button
+BTN_GRAY = (149, 165, 166)
+BTN_GRAY_HOVER = (127, 140, 141)
 
 # Fonts
 try:
     UI_FONT = pygame.font.SysFont('calibri', 24, bold=True)
     CHAT_FONT = pygame.font.SysFont('calibri', 20)
     BTN_FONT = pygame.font.SysFont('calibri', 22, bold=True)
+    CODE_FONT = pygame.font.SysFont('consolas', 22)
 except:
     UI_FONT = pygame.font.Font(None, 32)
     CHAT_FONT = pygame.font.Font(None, 24)
     BTN_FONT = pygame.font.Font(None, 28)
+    CODE_FONT = pygame.font.Font(None, 26)
 
-# Global State for Chat
+# --- Global State for Chat ---
 chat_log = [
     {"sender": "AI",
      "text": "Welcome to Seaside Programming! I am Gemini. I can see your screen, what are we working on?"}
@@ -50,7 +59,7 @@ chat_log = [
 is_waiting_for_gemini = False
 
 
-# Backend Function: The API Thread
+# --- Backend Function: The API Thread ---
 def fetch_gemini_response(pil_img, query):
     global is_waiting_for_gemini, chat_log
     try:
@@ -76,7 +85,19 @@ def fetch_gemini_response(pil_img, query):
     finally:
         is_waiting_for_gemini = False
 
-    # Helper Function: Text Wrapping
+    # --- Background Helper: Beach Gradient ---
+
+
+def draw_beach_gradient(surface, width, height):
+    gradient = pygame.Surface((1, 3))
+    gradient.set_at((0, 0), (135, 206, 235))
+    gradient.set_at((0, 1), (176, 224, 230))
+    gradient.set_at((0, 2), (250, 235, 215))
+    gradient = pygame.transform.smoothscale(gradient, (width, height))
+    surface.blit(gradient, (0, 0))
+
+
+# --- BULLETPROOF Helper Function: Text Wrapping ---
 def wrap_text(text, font, max_width):
     text = text.replace('**', '').replace('*', '')
     raw_paragraphs = text.split('\n')
@@ -99,21 +120,7 @@ def wrap_text(text, font, max_width):
     return final_lines
 
 
-# --- Background Helper: Beach Gradient ---
-def draw_beach_gradient(surface, width, height):
-    # Create a tiny 1x3 pixel surface
-    gradient = pygame.Surface((1, 3))
-
-    # Set the colors: Sky Blue -> Ocean Water -> Warm Sand
-    gradient.set_at((0, 0), (135, 206, 235))
-    gradient.set_at((0, 1), (176, 224, 230))
-    gradient.set_at((0, 2), (250, 235, 215))
-
-    # Smoothly stretch it to fill the whole screen
-    gradient = pygame.transform.smoothscale(gradient, (width, height))
-    surface.blit(gradient, (0, 0))
-
-# OOP Class: Standard Button
+# --- OOP Class: Standard Button ---
 class GameButton:
     def __init__(self, text, x, y, w, h, base_color, hover_color):
         self.rect = pygame.Rect(x, y, w, h)
@@ -138,15 +145,16 @@ class GameButton:
         return False
 
 
-# OOP Class: Text Input Box
+# --- OOP Class: Text Input Box ---
 class TextInputBox:
-    def __init__(self, x, y, w, h):
+    def __init__(self, x, y, w, h, is_code=False):
         self.rect = pygame.Rect(x, y, w, h)
         self.color_inactive = (220, 220, 220)
         self.color_active = ACCENT_COLOR
         self.color = self.color_inactive
         self.text = ""
         self.active = False
+        self.font = CODE_FONT if is_code else CHAT_FONT
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -172,38 +180,44 @@ class TextInputBox:
     def draw(self, surface):
         pygame.draw.rect(surface, (250, 250, 250), self.rect, border_radius=10)
         pygame.draw.rect(surface, self.color, self.rect, 2, border_radius=10)
-        text_surface = CHAT_FONT.render(self.text, True, TEXT_COLOR)
+        text_surface = self.font.render(self.text, True, TEXT_COLOR)
 
         cursor = "|" if self.active and pygame.time.get_ticks() % 1000 < 500 else ""
-        cursor_surface = CHAT_FONT.render(cursor, True, self.color)
+        cursor_surface = self.font.render(cursor, True, self.color)
 
         surface.blit(text_surface, (self.rect.x + 15, self.rect.y + 10))
         surface.blit(cursor_surface, (self.rect.x + 15 + text_surface.get_width(), self.rect.y + 10))
 
 
-# The Main Game Loop
+# --- The Main Game Loop ---
 def game_loop():
     global is_waiting_for_gemini, chat_log
     clock = pygame.time.Clock()
 
-    # Left Side (Game / Background Area)
+    # Layout Math
     left_x, left_y = 20, 20
     left_w, left_h = 800, 600
 
-    # Right Side (Chat Log Panel)
-    right_x = left_x + left_w + 20  # 840
+    right_x = left_x + left_w + 20
     right_y = 20
-    right_w = WIDTH - right_x - 20  # 420
+    right_w = WIDTH - right_x - 20
     right_h = 600
     chat_panel_rect = pygame.Rect(right_x, right_y, right_w, right_h)
 
-    # Bottom Interaction Zones (Y = 640)
-    input_box = TextInputBox(right_x, left_y + left_h + 20, right_w, 45)
-    run_button = GameButton(" RUN CODE", left_x, left_y + left_h + 20, 160, 45, BTN_GREEN, BTN_GREEN_HOVER)
+    is_script_open = False
+    script_panel_rect = pygame.Rect(left_x + 50, left_y + 50, left_w - 100, left_h - 100)
+
+    blank_box = TextInputBox(script_panel_rect.x + 230, script_panel_rect.y + 200, 250, 40, is_code=True)
+    chat_input_box = TextInputBox(right_x, left_y + left_h + 20, right_w, 45)
+
+    # --- UPDATED BUTTONS ---
+    code_button = GameButton(" CODE", left_x, left_y + left_h + 20, 180, 45, BTN_BLUE, BTN_BLUE_HOVER)
+    run_button = GameButton("RUN CODE", left_x, left_y + left_h + 20, 160, 45, BTN_GREEN, BTN_GREEN_HOVER)
     clear_button = GameButton("CLEAR", left_x + 180, left_y + left_h + 20, 120, 45, BTN_RED, BTN_RED_HOVER)
+    # NEW: The Hide Button sits next to the Clear Button
+    hide_button = GameButton("HIDE", left_x + 320, left_y + left_h + 20, 100, 45, BTN_GRAY, BTN_GRAY_HOVER)
 
     try:
-        # Load and scale the image to fit EXACTLY inside the left panel
         bg_one = pygame.image.load('assets/Grizzhacks Background.png').convert_alpha()
         bg_one = pygame.transform.smoothscale(bg_one, (left_w, left_h))
     except (FileNotFoundError, pygame.error):
@@ -215,54 +229,93 @@ def game_loop():
             if event.type == pygame.QUIT:
                 running = False
 
-            new_message = input_box.handle_event(event)
-            if new_message and not is_waiting_for_gemini:
-                chat_log.append({"sender": "User", "text": new_message})
+            # --- Chat Input Handling ---
+            new_chat_message = chat_input_box.handle_event(event)
+            if new_chat_message and not is_waiting_for_gemini:
+                chat_log.append({"sender": "User", "text": new_chat_message})
                 is_waiting_for_gemini = True
-
-                # We still take a screenshot of the WHOLE screen for Gemini!
                 raw_str = pygame.image.tobytes(SCREEN, "RGB")
                 pil_img = Image.frombytes("RGB", SCREEN.get_size(), raw_str)
-                threading.Thread(target=fetch_gemini_response, args=(pil_img, new_message)).start()
+                threading.Thread(target=fetch_gemini_response, args=(pil_img, new_chat_message)).start()
 
-            if run_button.is_clicked(event):
-                print("Code Execution Started!")
-            if clear_button.is_clicked(event):
-                print("Clearing script area...")
+            # --- Toggle State Handling ---
+            if not is_script_open:
+                if code_button.is_clicked(event):
+                    is_script_open = True
+            else:
+                blank_box.handle_event(event)
 
-        # Fill the main app background
+                # RUN NO LONGER CLOSES THE SCRIPT
+                if run_button.is_clicked(event):
+                    print(f"User submitted code: {blank_box.text}")
+                    if not is_waiting_for_gemini:
+                        msg = f"I wrote '{blank_box.text}' to swap the array values. Is that correct?"
+                        chat_log.append({"sender": "User", "text": msg})
+                        is_waiting_for_gemini = True
+                        raw_str = pygame.image.tobytes(SCREEN, "RGB")
+                        pil_img = Image.frombytes("RGB", SCREEN.get_size(), raw_str)
+                        threading.Thread(target=fetch_gemini_response, args=(pil_img, msg)).start()
+
+                if clear_button.is_clicked(event):
+                    blank_box.text = ""
+
+                    # NEW: HIDE BUTTON CLOSES THE SCRIPT
+                if hide_button.is_clicked(event):
+                    is_script_open = False
+
+        # --- DRAWING ---
         draw_beach_gradient(SCREEN, WIDTH, HEIGHT)
 
         # Draw the Left Panel (Game Background)
         if bg_one:
-            # Draw a subtle drop shadow for the image
             pygame.draw.rect(SCREEN, (210, 215, 220), (left_x + 4, left_y + 4, left_w, left_h), border_radius=12)
-            # We can't easily round the corners of a raw Pygame surface, so we draw it normally
             SCREEN.blit(bg_one, (left_x, left_y))
-            # Draw a clean border around the image
             pygame.draw.rect(SCREEN, (200, 200, 200), (left_x, left_y, left_w, left_h), 2)
         else:
             pygame.draw.rect(SCREEN, BG_PANEL, (left_x, left_y, left_w, left_h), border_radius=12)
-            placeholder = UI_FONT.render("Game / Script Area", True, (150, 150, 150))
-            SCREEN.blit(placeholder, (left_x + 50, left_y + 50))
 
-        # Draw the Buttons
-        run_button.draw(SCREEN)
-        clear_button.draw(SCREEN)
+        # --- DRAW UI BASED ON STATE ---
+        if not is_script_open:
+            code_button.draw(SCREEN)
+        else:
+            run_button.draw(SCREEN)
+            clear_button.draw(SCREEN)
+            # NEW: Draw the hide button
+            hide_button.draw(SCREEN)
+
+            overlay = pygame.Surface((left_w, left_h), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 150))
+            SCREEN.blit(overlay, (left_x, left_y))
+
+            pygame.draw.rect(SCREEN, (30, 30, 35), script_panel_rect, border_radius=12)
+            pygame.draw.rect(SCREEN, (60, 60, 70), script_panel_rect, 2, border_radius=12)
+
+            title = UI_FONT.render("Level 1: Sorting Arrays", True, ACCENT_COLOR)
+            SCREEN.blit(title, (script_panel_rect.x + 30, script_panel_rect.y + 30))
+
+            # line1 = CODE_FONT.render("def bubble_sort(arr):", True, (200, 200, 200))
+            # line2 = CODE_FONT.render("    for i in range(len(arr) - 1):", True, (200, 200, 200))
+            # line3 = CODE_FONT.render("        if arr[i] > arr[i+1]:", True, (200, 200, 200))
+            # line4 = CODE_FONT.render("            # Swap the variables below", True, (100, 200, 100))
+            # line5 = CODE_FONT.render("            arr[i], arr[i+1] =", True, (200, 200, 200))
+            #
+            # SCREEN.blit(line1, (script_panel_rect.x + 30, script_panel_rect.y + 80))
+            # SCREEN.blit(line2, (script_panel_rect.x + 30, script_panel_rect.y + 110))
+            # SCREEN.blit(line3, (script_panel_rect.x + 30, script_panel_rect.y + 140))
+            # SCREEN.blit(line4, (script_panel_rect.x + 30, script_panel_rect.y + 170))
+            # SCREEN.blit(line5, (script_panel_rect.x + 30, script_panel_rect.y + 208))
+
+            blank_box.draw(SCREEN)
 
         # Draw the Chat Panel
-        pygame.draw.rect(SCREEN, (210, 215, 220), (right_x + 4, right_y + 4, right_w, right_h),
-                         border_radius=12)  # Shadow
+        pygame.draw.rect(SCREEN, (210, 215, 220), (right_x + 4, right_y + 4, right_w, right_h), border_radius=12)
         pygame.draw.rect(SCREEN, BG_PANEL, chat_panel_rect, border_radius=12)
 
-        # Chat Header
         header_surf = UI_FONT.render("Gemini Assistant", True, ACCENT_COLOR)
         SCREEN.blit(header_surf, (right_x + 20, right_y + 20))
         pygame.draw.line(SCREEN, (235, 235, 235), (right_x + 20, right_y + 50), (right_x + right_w - 20, right_y + 50),
                          2)
 
-        # Draw Chat Log
-        # We start drawing from the bottom of the chat panel, leaving a tiny bit of padding
         current_y = chat_panel_rect.bottom - 20
 
         display_log = list(chat_log)
@@ -291,8 +344,7 @@ def game_loop():
                 text_surf = CHAT_FONT.render(line, True, TEXT_COLOR)
                 SCREEN.blit(text_surf, (bubble_x + 15, current_y + 10 + (i * 25)))
 
-        # Draw the Input Box (Now detached and below the chat!)
-        input_box.draw(SCREEN)
+        chat_input_box.draw(SCREEN)
 
         pygame.display.flip()
         clock.tick(60)

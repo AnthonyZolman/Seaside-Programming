@@ -1,6 +1,7 @@
 import pygame
 import sys
 import random
+import gamescreen
 
 # Initialize Pygame
 pygame.init()
@@ -130,7 +131,8 @@ def main_menu():
                 running = False
 
             if buttons[0].is_clicked(event):  # Start Button
-                print("Start Game clicked!")
+                running = False
+                gamescreen.game_loop()
             if buttons[3].is_clicked(event):  # Quit Button
                 running = False
 
