@@ -1,4 +1,5 @@
 import pygame
+import time
 import sys
 import os
 import threading
@@ -206,6 +207,9 @@ def game_loop(level_num=1):
     try:
         bg_one = pygame.image.load('assets/Grizzhacks Background.png').convert_alpha()
         bg_one = pygame.transform.smoothscale(bg_one, (left_w, left_h))
+        pygame.mixer.init()
+        pygame.mixer.music.load('assets/BeachSFX.wav')
+        pygame.mixer.music.play(-1, fade_ms=5000)
     except:
         bg_one = None
     # ==========================================

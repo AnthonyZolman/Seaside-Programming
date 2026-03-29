@@ -18,6 +18,9 @@ TEXT_COLOR = (40, 40, 40)
 ACCENT_COLOR = (255, 165, 0)
 PANEL_FG_COLOR = (255, 255, 255, 150)
 
+# Initialize SFX
+pygame.mixer.init()
+
 # Fonts
 try:
     TITLE_FONT = pygame.font.SysFont('calibri', 70, bold=True)
@@ -145,6 +148,9 @@ def main_menu():
                 credit.credits_loop(SCREEN)
             if buttons[3].is_clicked(event):  # Quit Button
                 running = False
+            if buttons[0].is_hovered or buttons[1].is_hovered or buttons[2].is_hovered or buttons[3].is_hovered:
+                pygame.mixer.music.load('assets/ButtonSFX.wav')
+                pygame.mixer.music.play(0)
 
                 # Drawing the cloud to thje screen
         draw_beach_gradient(SCREEN, WIDTH, HEIGHT)
