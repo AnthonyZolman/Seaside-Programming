@@ -1,4 +1,5 @@
 import pygame
+import time
 import sys
 import os
 import threading
@@ -58,32 +59,53 @@ chat_log = [
 ]
 is_waiting_for_gemini = False
 
-
-# --- Backend Function: The API Thread ---
+# --- Backend Function: The Rate-Limit Optimized API Thread ---
 def fetch_gemini_response(pil_img, query):
     global is_waiting_for_gemini, chat_log
+
+    # 1. Image Optimization: Downscale and compress to save tokens and speed up response
     try:
+        pil_img = pil_img.resize((640, 360), Image.Resampling.LANCZOS)
         img_byte_arr = BytesIO()
-        pil_img.save(img_byte_arr, format='PNG')
-
-        prompt_context = (
-            f"Context: The user is looking at the game screen on the left. "
-            f"Answer whatever question they may have even if the image does not match what is being asked. "
-            f"Question: {query}"
-        )
-
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[
-                types.Part.from_bytes(data=img_byte_arr.getvalue(), mime_type="image/png"),
-                prompt_context
-            ]
-        )
-        chat_log.append({"sender": "AI", "text": response.text})
+        pil_img.save(img_byte_arr, format='JPEG', quality=80)  # Using JPEG instead of PNG is faster
+        image_bytes = img_byte_arr.getvalue()
     except Exception as e:
-        chat_log.append({"sender": "AI", "text": f"API Error: {e}"})
-    finally:
+        chat_log.append({"sender": "AI", "text": f"Image Processing Error: {e}"})
         is_waiting_for_gemini = False
+        return
+
+    prompt_context = (
+        f"Context: The user is looking at the game screen on the left. "
+        f"Answer whatever question they may have even if the image does not match what is being asked. "
+        f"Question: {query}"
+    )
+
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            # 2. Model Swap: Using flash-lite for speed and cost efficiency
+            response = client.models.generate_content(
+                model="gemini-2.5-flash-lite",
+                contents=[
+                    types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+                    prompt_context
+                ]
+            )
+            chat_log.append({"sender": "AI", "text": response.text})
+            break  # Exit the loop immediately if successful!
+
+        except Exception as e:
+            # 3. Smart Error Handling: If we hit a speed limit, wait and try again
+            if "429" in str(e) and attempt < max_retries - 1:
+                wait_time = (attempt + 1) * 2  # Wait 2s, then 4s, etc.
+                chat_log.append({"sender": "AI", "text": f"Rate limit hit. Automatically retrying in {wait_time}s..."})
+                time.sleep(wait_time)
+            else:
+                chat_log.append({"sender": "AI", "text": f"API Error: {e}"})
+                break
+
+    # Ensure the UI knows we are done, regardless of success or final failure
+    is_waiting_for_gemini = False
 
     # --- Background Helper: Beach Gradient ---
 

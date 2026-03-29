@@ -2,6 +2,7 @@ import pygame
 import sys
 import random
 import gamescreen
+import credit
 
 # Initialize Pygame
 pygame.init()
@@ -135,6 +136,8 @@ def main_menu():
                 gamescreen.game_loop()
             if buttons[3].is_clicked(event):  # Quit Button
                 running = False
+            if buttons[2].is_clicked(event):  # Credits Button
+                credit.credits_loop(SCREEN)
 
                 # Drawing the cloud to thje screen
         draw_beach_gradient(SCREEN, WIDTH, HEIGHT)
