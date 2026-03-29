@@ -165,7 +165,7 @@ class TextInputBox:
 
 def game_loop(level_num=1):
     global is_waiting_for_gemini, chat_log
-    chat_log = [{"sender": "AI", "text": f"Welcome to Level {level_num}! Open the code block and let's get started."}]
+    chat_log = [{"sender": "AI", "text": f"Welcome to the challenge! Open the code block and let's get started."}]
     is_waiting_for_gemini = False
     clock = pygame.time.Clock()
 
