@@ -81,7 +81,7 @@ def credits_loop(screen):
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if back_btn_rect.collidepoint(event.pos):
-                    running = False  # Break the loop to return to minhmain.py!
+                    running = False  # Break the loop to return to main.py!
 
         # --- Update Logic ---
         # Move every line up the screen
