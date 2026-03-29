@@ -167,8 +167,15 @@ class TextInputBox:
 
 
 # --- The Main Game Loop ---
-def game_loop():
+def game_loop(level_num=1):  # Now it knows which level we are on!
     global is_waiting_for_gemini, chat_log
+    # ==========================================
+    # --- NEW: RESET CHAT LOG ON LEVEL LOAD ---
+    # ==========================================
+    chat_log = [
+        {"sender": "AI", "text": "Welcome to the challenge! I am Gemini. Open the code block to begin."}
+    ]
+    is_waiting_for_gemini = False
     clock = pygame.time.Clock()
 
     left_x, left_y, left_w, left_h = 20, 20, 800, 600
@@ -190,19 +197,55 @@ def game_loop():
     except:
         bg_one = None
 
-    # ==========================================
-    # --- NEW: MULTILINE EDITOR STATE ---
-    # ==========================================
+        # ==========================================
+        # --- DYNAMIC LEVEL LOADING ---
+        # ==========================================
+        # NOTICE: These are lined up straight under "try:" and "except:"!
     is_script_open = False
-    # This list holds the actual lines of code!
-    python_code = [
-        "def test_function():",
-        "    print('Hello Seaside from the Editor!')",
-        "    return 100",
-        "",
-        "result = test_function()",
-        "print(f'Result is: {result}')"
-    ]
+
+    if level_num == 1:
+        level_title = "Level 1: Sorting Arrays"
+        python_code = [
+            "def merge(left, right):",
+            "    result = []",
+            "    i, j = 0, 0",
+            "    while i < len(left) and j < len(right):",
+            "        if left[i] > right[j]:",
+            "            result.append(left[i])",
+            "            i += 1",
+            "        else:",
+            "            result.append(right[j])",
+            "            j += 1",
+            "    result.extend(left[i:])",
+            "    result.extend(right[j:])",
+            "    return sorted(result, reverse=True)",
+            "",
+            "def merge_sort(arr):",
+            "    if len(arr) <= 1:",
+            "        return arr",
+            "    mid = len(arr) // 2",
+            "    left = merge_sort(arr[:mid])",
+            "    right = merge_sort(arr[mid:])",
+            "    return merge(left, right)",
+            "",
+            "data = [12, 45, 23, 89, 34, 67, 78, 90, 11]",
+            "print('Top 5 highest records:', merge_sort(data)[:5])"
+        ]
+    elif level_num == 2:
+        level_title = "Level 2: Loops & Logic"
+        python_code = [
+            "def solve_puzzle():",
+            "    # TODO: Write a loop",
+            "    pass"
+        ]
+    elif level_num == 3:
+        level_title = "Level 3: Recursion"
+        python_code = [
+            "def recursive_search():",
+            "    # TODO: Base case needed!",
+            "    pass"
+        ]
+
     cursor_line = len(python_code) - 1
 
     pygame.key.start_text_input()
@@ -210,6 +253,10 @@ def game_loop():
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                running = False
+
+            # --- NEW: ESCAPE KEY FIX ---
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 running = False
 
             # --- Chat Input ---
@@ -257,8 +304,21 @@ def game_loop():
                     try:
                         exec(full_code, {})
                         sys_output = output_buffer.getvalue()
+
                         if sys_output:
                             chat_log.append({"sender": "AI", "text": f"[SYSTEM OUTPUT]:\n{sys_output}"})
+
+                            # ==========================================
+                            # --- NEW: WIN CONDITION & SAVE GAME ---
+                            # ==========================================
+                            if level_num == 1 and "[90, 89, 78, 67, 45]" in sys_output:
+                                chat_log.append({"sender": "AI",
+                                                 "text": " SUCCESS! You sorted the array! Level 2 is UNLOCKED! Press ESC to return to the menu."})
+
+                                # Write progress to a save file!
+                                with open("save.txt", "w") as f:
+                                    f.write("2")
+
                         else:
                             chat_log.append(
                                 {"sender": "AI", "text": "[SYSTEM]: Code ran successfully, but printed nothing."})
@@ -298,7 +358,7 @@ def game_loop():
             pygame.draw.rect(SCREEN, (30, 30, 35), script_panel_rect, border_radius=12)
             pygame.draw.rect(SCREEN, (60, 60, 70), script_panel_rect, 2, border_radius=12)
 
-            title = UI_FONT.render("Level Script Editor", True, ACCENT_COLOR)
+            title = UI_FONT.render(level_title, True, ACCENT_COLOR)
             SCREEN.blit(title, (script_panel_rect.x + 30, script_panel_rect.y + 20))
 
             for i, line in enumerate(python_code):
@@ -351,8 +411,8 @@ def game_loop():
         pygame.display.flip()
         clock.tick(60)
 
-    pygame.quit()
-    sys.exit()
+    # pygame.quit()
+    # sys.exit()
 
 
 if __name__ == "__main__":

@@ -133,13 +133,13 @@ def main_menu():
                 running = False
 
             if buttons[0].is_clicked(event):  # Start Button
-                running = False
-                gamescreen.game_loop()
+                # running = False
+                gamescreen.game_loop(1)
             if buttons[1].is_clicked(event):
                 # This opens your new pixelated screen!
                 selected = levelselect.level_select_loop(SCREEN)
                 if selected is not None:
-                    running = False
+                    # running = False
                     gamescreen.game_loop()
             if buttons[2].is_clicked(event):  # Credits Button
                 credit.credits_loop(SCREEN)

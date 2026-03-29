@@ -1,5 +1,6 @@
 import pygame
 import sys
+import os
 
 # --- Constants ---
 WIDTH, HEIGHT = 1280, 720
@@ -84,6 +85,16 @@ class PixelButton:
                 return True
         return False
 
+# --- NEW: Save File Helper ---
+def get_unlocked_level():
+    """Reads the save file to see how far the player has gotten."""
+    if os.path.exists("save.txt"):
+        try:
+            with open("save.txt", "r") as f:
+                return int(f.read().strip())
+        except:
+            return 1 # If the file is corrupted, default to level 1
+    return 1 # If no save file exists yet, default to level 1
 
 def level_select_loop(screen):
     clock = pygame.time.Clock()
@@ -101,6 +112,7 @@ def level_select_loop(screen):
     spacing_x = 300
     spacing_y = 220  # Gap between top and bottom row
 
+    unlocked_max = get_unlocked_level()
     for i in range(6):
         # Grid Math:
         # row 0 for first three, row 1 for next three
@@ -111,8 +123,9 @@ def level_select_loop(screen):
         x = start_x + (col * spacing_x)
         y = start_y + (row * spacing_y)
 
-        # Level 1 is unlocked, the rest (1-5) are locked
-        is_locked = True if i > 0 else False
+        # --- 2. Check if this button should be locked ---
+        # If the level number (i + 1) is greater than their progress, lock it!
+        is_locked = True if (i + 1) > unlocked_max else False
 
         buttons.append(PixelButton(x, y, 200, 100, i + 1, level_data[i], is_locked))
     # Back Button
