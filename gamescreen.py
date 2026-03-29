@@ -22,7 +22,6 @@ SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Seaside Programming")
 
 # Colors
-BG_MAIN = (230, 235, 240)
 BG_PANEL = (255, 255, 255)
 TEXT_COLOR = (40, 40, 40)
 ACCENT_COLOR = (255, 165, 0)
@@ -52,8 +51,7 @@ except:
     CODE_FONT = pygame.font.Font(None, 24)
 
 # --- Global State for Chat ---
-chat_log = [
-    {"sender": "AI", "text": "Welcome! I can now read your whole script, even if it's scrolled away. Ask me anything!"}]
+chat_log = [{"sender": "AI", "text": "I can now see your full script and line numbers. How can I help?"}]
 is_waiting_for_gemini = False
 
 
@@ -65,10 +63,9 @@ def fetch_gemini_response(pil_img, query, full_script_text):
         pil_img.save(img_byte_arr, format='JPEG', quality=80)
         image_bytes = img_byte_arr.getvalue()
 
-        # Added script text to context so Gemini isn't "blind" to scrolled code
         prompt_context = (
-            f"Context: The user is in a coding environment.\n"
-            f"Full Script Content:\n{full_script_text}\n\n"
+            f"Context: The user is coding in a Python editor.\n"
+            f"Full Script Content (Raw Text):\n{full_script_text}\n\n"
             f"User Question: {query}"
         )
 
@@ -179,7 +176,7 @@ def game_loop():
     chat_panel_rect = pygame.Rect(right_x, right_y, right_w, right_h)
     script_panel_rect = pygame.Rect(left_x + 50, left_y + 50, left_w - 100, left_h - 100)
 
-    # --- Editor & Scrolling State ---
+    # --- State ---
     scroll_y = 0
     line_height = 24
     is_script_open = False
@@ -188,11 +185,10 @@ def game_loop():
         with open("Scripts/mergeSort.py", "r") as f:
             python_code = [line.rstrip('\n') for line in f]
     except:
-        python_code = ["# Script not found. Type something here!"]
+        python_code = ["# Type your code here!"]
 
     cursor_line = len(python_code) - 1
 
-    # UI Elements
     chat_input_box = TextInputBox(right_x, left_y + left_h + 20, right_w, 45)
     code_button = GameButton(" OPEN CODE", left_x, left_y + left_h + 20, 180, 45, BTN_BLUE, BTN_BLUE_HOVER)
     run_button = GameButton(" RUN CODE", left_x, left_y + left_h + 20, 160, 45, BTN_GREEN, BTN_GREEN_HOVER)
@@ -212,32 +208,22 @@ def game_loop():
             if event.type == pygame.QUIT:
                 running = False
 
-            # --- Scroll Input ---
             if event.type == pygame.MOUSEWHEEL and is_script_open:
                 scroll_y += event.y * 30
-                # Bounds: Prevent scrolling too far up or down
                 max_scroll = min(0, -(len(python_code) * line_height - (script_panel_rect.height - 100)))
                 if scroll_y < max_scroll: scroll_y = max_scroll
                 if scroll_y > 0: scroll_y = 0
 
-            # --- Chat Input + API CALL ---
             new_chat_message = chat_input_box.handle_event(event)
             if new_chat_message and not is_waiting_for_gemini:
                 chat_log.append({"sender": "User", "text": new_chat_message})
                 is_waiting_for_gemini = True
-
-                # Capture Screen
                 raw_str = pygame.image.tobytes(SCREEN, "RGB")
                 pil_img = Image.frombytes("RGB", SCREEN.get_size(), raw_str)
-
-                # NEW: Convert entire list to string for the API
                 full_script_str = "\n".join(python_code)
-
-                # Start Thread with 3 arguments
                 threading.Thread(target=fetch_gemini_response,
                                  args=(pil_img, new_chat_message, full_script_str)).start()
 
-            # --- Code Logic ---
             if not is_script_open:
                 if code_button.is_clicked(event): is_script_open = True
             else:
@@ -269,7 +255,7 @@ def game_loop():
                         exec(full_code, {})
                         sys_output = output_buffer.getvalue()
                         chat_log.append({"sender": "AI",
-                                         "text": f"[SYSTEM OUTPUT]:\n{sys_output}" if sys_output else "[SYSTEM]: Code ran successfully."})
+                                         "text": f"[SYSTEM OUTPUT]:\n{sys_output}" if sys_output else "[SYSTEM]: Success."})
                     except Exception as e:
                         chat_log.append({"sender": "AI", "text": f"[PYTHON ERROR]:\n{str(e)}"})
                     finally:
@@ -299,33 +285,37 @@ def game_loop():
             overlay.fill((0, 0, 0, 150))
             SCREEN.blit(overlay, (left_x, left_y))
 
-            # Draw Editor Window
             pygame.draw.rect(SCREEN, (30, 30, 35), script_panel_rect, border_radius=12)
             pygame.draw.rect(SCREEN, (60, 60, 70), script_panel_rect, 2, border_radius=12)
-            title = UI_FONT.render("Level Script Editor", True, ACCENT_COLOR)
-            SCREEN.blit(title, (script_panel_rect.x + 30, script_panel_rect.y + 20))
+            SCREEN.blit(UI_FONT.render("Level Script Editor", True, ACCENT_COLOR),
+                        (script_panel_rect.x + 30, script_panel_rect.y + 20))
 
-            # --- CLIPPED CODE AREA ---
-            # This Rect defines the "View" where text is allowed
+            # --- CLIPPED CODE AREA WITH LINE NUMBERS ---
             view_rect = pygame.Rect(script_panel_rect.x + 30, script_panel_rect.y + 65,
                                     script_panel_rect.width - 60, script_panel_rect.height - 95)
 
-            # Using subsurface ensures text doesn't bleed out of the box
             try:
                 editor_surface = SCREEN.subsurface(view_rect)
+                line_number_w = 45  # Gutter width
+
                 for i, line in enumerate(python_code):
                     y_pos = (i * line_height) + scroll_y
-                    # Only render visible lines
                     if -line_height < y_pos < view_rect.height:
+                        # Draw Line Numbers
+                        num_surf = CODE_FONT.render(f"{i + 1:2}", True, (100, 100, 110))
+                        editor_surface.blit(num_surf, (0, y_pos))
+
+                        # Draw Code
                         txt = CODE_FONT.render(line, True, (230, 230, 230))
-                        editor_surface.blit(txt, (0, y_pos))
-                        # Cursor
+                        editor_surface.blit(txt, (line_number_w, y_pos))
+
+                        # Draw Cursor
                         if i == cursor_line and not chat_input_box.active:
                             if pygame.time.get_ticks() % 1000 < 500:
-                                cx = CODE_FONT.size(line)[0]
+                                cx = line_number_w + CODE_FONT.size(line)[0]
                                 pygame.draw.line(editor_surface, (255, 255, 255), (cx, y_pos + 2), (cx, y_pos + 20), 2)
             except:
-                pass  # Safety for subsurface edge cases
+                pass
 
         # --- DRAW CHAT ---
         pygame.draw.rect(SCREEN, BG_PANEL, chat_panel_rect, border_radius=12)
