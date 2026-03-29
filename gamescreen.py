@@ -208,6 +208,48 @@ def game_loop(level_num=1):
         bg_one = pygame.transform.smoothscale(bg_one, (left_w, left_h))
     except:
         bg_one = None
+    # ==========================================
+    # --- NEW: FAST DECORATION LOADING ---
+    # ==========================================
+    # 1. Load Shells
+    shells = []
+    shell_positions = [(left_x + 150, left_y + 450), (left_x + 350, left_y + 380), (left_x + 550, left_y + 480),
+                       (left_x + 650, left_y + 350), (left_x + 250, left_y + 520)]
+    for i in range(1, 6):
+        try:
+            shells.append(pygame.image.load(f'assets/Shell{i}.png').convert_alpha())
+        except:
+            pass
+
+    # 2. Load Treasures
+    treasures = []
+    treasure_positions = [(left_x + 100, left_y + 300), (left_x + 400, left_y + 250), (left_x + 600, left_y + 200),
+                          (left_x + 700, left_y + 450), (left_x + 200, left_y + 150), (left_x + 500, left_y + 120),
+                          (left_x + 50, left_y + 500)]
+    for i in range(1, 8):
+        try:
+            treasures.append(pygame.image.load(f'assets/Treasure{i}.png').convert_alpha())
+        except:
+            pass
+
+    # 3. Load Baby Turtle
+    try:
+        turtle_img = pygame.image.load('assets/BabyTurtle.png').convert_alpha()
+        turtle_pos = (left_x + 450, left_y + 520)  # Near the bottom right
+    except:
+        turtle_img = None
+
+    for i in range(1, 6):
+        try:
+            # Load each shell from the assets folder
+            shell_img = pygame.image.load(f'assets/Shell{i}.png').convert_alpha()
+
+            # Optional: If the shells are HUGE, uncomment the line below to shrink them to 50x50!
+            # shell_img = pygame.transform.smoothscale(shell_img, (50, 50))
+
+            shells.append(shell_img)
+        except Exception as e:
+            print(f"Failed to load Shell{i}: {e}")
 
     pygame.key.start_text_input()
     running = True
@@ -284,7 +326,21 @@ def game_loop(level_num=1):
 
         # --- DRAWING ---
         draw_beach_gradient(SCREEN, WIDTH, HEIGHT)
-        if bg_one: SCREEN.blit(bg_one, (left_x, left_y))
+
+        if bg_one:
+            SCREEN.blit(bg_one, (left_x, left_y))
+
+            # --- NEW: DRAW ALL DECORATIONS HERE ---
+            for i, shell in enumerate(shells):
+                if i < len(shell_positions):
+                    SCREEN.blit(shell, shell_positions[i])
+
+            for i, treasure in enumerate(treasures):
+                if i < len(treasure_positions):
+                    SCREEN.blit(treasure, treasure_positions[i])
+
+            if turtle_img:
+                SCREEN.blit(turtle_img, turtle_pos)
 
         if not is_script_open:
             code_button.draw(SCREEN)
