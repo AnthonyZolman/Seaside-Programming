@@ -3,6 +3,7 @@ import sys
 import random
 import gamescreen
 import credit
+import levelselect
 
 # Initialize Pygame
 pygame.init()
@@ -134,10 +135,16 @@ def main_menu():
             if buttons[0].is_clicked(event):  # Start Button
                 running = False
                 gamescreen.game_loop()
-            if buttons[3].is_clicked(event):  # Quit Button
-                running = False
+            if buttons[1].is_clicked(event):
+                # This opens your new pixelated screen!
+                selected = levelselect.level_select_loop(SCREEN)
+                if selected is not None:
+                    running = False
+                    gamescreen.game_loop()
             if buttons[2].is_clicked(event):  # Credits Button
                 credit.credits_loop(SCREEN)
+            if buttons[3].is_clicked(event):  # Quit Button
+                running = False
 
                 # Drawing the cloud to thje screen
         draw_beach_gradient(SCREEN, WIDTH, HEIGHT)
