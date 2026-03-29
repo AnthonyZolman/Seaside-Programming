@@ -10,7 +10,7 @@ from google.genai import types
 from dotenv import load_dotenv
 
 # --- Gemini API Setup ---
-load_dotenv("keys.env")
+load_dotenv("../keys.env")
 client = genai.Client(api_key=os.environ.get("API_KEY"))
 
 # 1. Initialize Pygame
@@ -192,7 +192,7 @@ def game_loop(level_num=1):  # Now it knows which level we are on!
     hide_button = GameButton(" HIDE", left_x + 320, left_y + left_h + 20, 100, 45, BTN_GRAY, BTN_GRAY_HOVER)
 
     try:
-        bg_one = pygame.image.load('assets/Grizzhacks Background.png').convert_alpha()
+        bg_one = pygame.image.load('../assets/Grizzhacks Background.png').convert_alpha()
         bg_one = pygame.transform.smoothscale(bg_one, (left_w, left_h))
     except:
         bg_one = None
@@ -316,7 +316,7 @@ def game_loop(level_num=1):  # Now it knows which level we are on!
                                                  "text": " SUCCESS! You sorted the array! Level 2 is UNLOCKED! Press ESC to return to the menu."})
 
                                 # Write progress to a save file!
-                                with open("save.txt", "w") as f:
+                                with open("../save.txt", "w") as f:
                                     f.write("2")
 
                         else:

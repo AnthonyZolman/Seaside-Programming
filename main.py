@@ -1,7 +1,7 @@
 import pygame
 import sys
 import random
-import gamescreen1
+import gamescreen
 import credit
 import levelselect
 

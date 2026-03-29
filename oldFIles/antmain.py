@@ -10,7 +10,7 @@ from google.genai import types
 from dotenv import load_dotenv
 
 # --- Configuration & Constants ---
-load_dotenv("keys.env")
+load_dotenv("../keys.env")
 
 COLORS = {
     "WHITE": (255, 255, 255),
@@ -63,7 +63,7 @@ class GeminiApp:
 
     def _load_background(self):
         try:
-            return pygame.image.load('assets/bg_one.png').convert_alpha()
+            return pygame.image.load('../assets/bg_one.png').convert_alpha()
         except:
             surf = pygame.Surface((WIDTH - SIDEBAR_WIDTH - CODE_WIN_WIDTH, HEIGHT))
             surf.fill((40, 44, 52))
