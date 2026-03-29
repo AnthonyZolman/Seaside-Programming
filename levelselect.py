@@ -90,7 +90,7 @@ def level_select_loop(screen):
 
     # --- UPDATED: 6 Levels with Grid Math ---
     level_data = [
-        "SORTING", "LOOPS", "RECURSION",
+        "SORTING", "KNAPSACK", "DFS/BFS",
         "ARRAYS", "LOGIC", "OBJECTS"
     ]
 
